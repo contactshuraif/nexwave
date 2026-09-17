@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+  }
+  
+  .dark body {
+    @apply bg-[#050505] text-white;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 dark:bg-[#050505];
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-brand-blue dark:bg-brand-blue rounded;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-cyan dark:bg-brand-cyan;
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism - Light & Dark */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-slate-200 shadow-soft-light transition-all duration-300;
+  }
+  .dark .glass {
+    @apply bg-white/5 border-white/10 shadow-glass-inset;
+  }
+
+  /* Text Glow - Only works well in Dark Mode */
+  .text-glow {
+    text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+  }
+  .dark .text-glow {
+    text-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+  }
+
+  /* Background Grids */
+  .bg-grid {
+    background-size: 40px 40px;
+    background-image: linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  }
+  .dark .bg-grid {
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  }
+
+  /* Marquee Mask */
+  .mask-fade {
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  }
+}
