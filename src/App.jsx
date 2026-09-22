@@ -204,17 +204,6 @@ function MeshBackground() {
           willChange: 'transform',
         }}
       />
-      <div
-        className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(10,11,14,0.5) 1px, transparent 1px),' +
-            'linear-gradient(90deg, rgba(10,11,14,0.5) 1px, transparent 1px)',
-          backgroundSize: '56px 56px',
-          maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 80%)',
-          WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 80%)',
-        }}
-      />
     </div>
   )
 }
@@ -269,21 +258,68 @@ function WaveRule({ flip = false, className = '' }) {
   )
 }
 
-function Field({ label, placeholder, type = 'text', textarea = false, id, ...rest }) {
-  const base = `w-full bg-transparent border-0 border-b border-hair-light dark:border-hair-dark
-                focus:border-cobalt transition-colors duration-300 outline-none
-                py-3 text-base font-sans text-ink dark:text-paper
-                placeholder:text-ink/30 dark:placeholder:text-paper/25
-                disabled:opacity-60 disabled:cursor-not-allowed`
+/* ============================================================
+   FIELD — redesigned for readability
+   · Sans-serif label (not mono)
+   · Visible input background + border
+   · Better placeholder contrast
+   · Clear focus ring
+   ============================================================ */
+function Field({
+  label,
+  placeholder,
+  type = 'text',
+  textarea = false,
+  id,
+  required = false,
+  ...rest
+}) {
   const fieldId = id || label.toLowerCase().replace(/\s+/g, '-')
+
+  const inputClasses = `
+    mt-2 w-full rounded-lg
+    border border-ink/15 dark:border-paper/20
+    bg-white/70 dark:bg-white/[0.04]
+    px-4 py-3.5
+    text-base font-sans text-ink dark:text-paper
+    placeholder:text-ink/40 dark:placeholder:text-paper/45
+    transition-all duration-200
+    outline-none
+    hover:border-ink/30 dark:hover:border-paper/35
+    focus:border-cobalt dark:focus:border-cobalt-light
+    focus:bg-white dark:focus:bg-white/[0.06]
+    focus:ring-4 focus:ring-cobalt/10 dark:focus:ring-cobalt-light/15
+    disabled:opacity-50 disabled:cursor-not-allowed
+  `
+
   return (
     <label htmlFor={fieldId} className="block">
-      <span className="kicker">{label}</span>
-      <div className="mt-2">
-        {textarea
-          ? <textarea id={fieldId} rows="4" placeholder={placeholder} className={`${base} resize-none`} {...rest} />
-          : <input id={fieldId} type={type} placeholder={placeholder} className={base} {...rest} />}
-      </div>
+      <span className="flex items-center gap-1
+                       text-[11px] font-semibold uppercase tracking-[0.12em]
+                       text-ink/70 dark:text-paper/70">
+        {label}
+        {required && <span className="text-cobalt">*</span>}
+      </span>
+
+      {textarea ? (
+        <textarea
+          id={fieldId}
+          rows="4"
+          placeholder={placeholder}
+          required={required}
+          className={`${inputClasses} resize-none`}
+          {...rest}
+        />
+      ) : (
+        <input
+          id={fieldId}
+          type={type}
+          placeholder={placeholder}
+          required={required}
+          className={inputClasses}
+          {...rest}
+        />
+      )}
     </label>
   )
 }
@@ -436,10 +472,6 @@ function FaqRow({ index, q, a }) {
   )
 }
 
-/* ============================================================
-   CONTACT FORM — wired to /api/contact (Resend)
-   States: idle · loading · success · error
-   ============================================================ */
 function ContactForm() {
   const [state, setState] = useState('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -486,8 +518,8 @@ function ContactForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6" noValidate>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Field label="Name"  name="name"  placeholder="Ada Lovelace"    required disabled={disabled} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Field label="Name"  name="name"  placeholder="Ada Lovelace"  required disabled={disabled} />
         <Field label="Email" name="email" type="email" placeholder="ada@example.com" required disabled={disabled} />
       </div>
       <Field label="Company" name="company" placeholder="Acme, Inc." disabled={disabled} />
@@ -514,10 +546,9 @@ function ContactForm() {
         <span className="kicker">Replies within one business day</span>
       </div>
 
-      {/* Error message */}
       {state === 'error' && errorMsg && (
         <div role="alert"
-             className="flex items-start gap-3 p-4 rounded-hair
+             className="flex items-start gap-3 p-4 rounded-lg
                         border border-red-500/30 bg-red-500/5
                         text-sm text-red-500 dark:text-red-400">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -525,10 +556,9 @@ function ContactForm() {
         </div>
       )}
 
-      {/* Success message */}
       {state === 'success' && (
         <div role="status"
-             className="flex items-start gap-3 p-4 rounded-hair
+             className="flex items-start gap-3 p-4 rounded-lg
                         border border-teal/30 bg-teal/5
                         text-sm text-teal">
           <Check className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -556,7 +586,6 @@ export default function App() {
       <MeshBackground />
       <div className="spotlight" aria-hidden="true" />
 
-      {/* Scroll progress bar */}
       <div aria-hidden="true" className="fixed top-0 left-0 right-0 z-[60] h-[2px] bg-transparent">
         <div
           className="h-full transition-[width] duration-100 ease-out"
@@ -579,7 +608,9 @@ export default function App() {
               <img src="/nexwave.png" alt="" className="h-8 w-auto transition-transform duration-300 group-hover:scale-105" />
               <span className="hidden sm:flex flex-col leading-none">
                 <span className="font-display font-bold text-xl tracking-tighter2">Nex Wave</span>
-                <span className="kicker mt-1">Software Studio · LK</span>
+                <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink/50 dark:text-paper/50">
+                  Software Studio · LK
+                </span>
               </span>
             </a>
             <nav className="hidden lg:flex items-center gap-8" aria-label="Primary">
@@ -851,7 +882,9 @@ export default function App() {
                          rel="noopener noreferrer"
                          className="py-5 flex items-center gap-5 group relative overflow-hidden">
                         <span className="text-ink/60 dark:text-paper/60 group-hover:text-cobalt transition-colors duration-200">{c.icon}</span>
-                        <span className="kicker w-20">{c.label}</span>
+                        <span className="w-24 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink/60 dark:text-paper/60">
+                          {c.label}
+                        </span>
                         <span className={`flex-1 font-mono text-sm ${c.hover} transition-colors duration-200`}>{c.value}</span>
                         <ArrowUpRight className="w-4 h-4 text-ink/30 dark:text-paper/30 group-hover:text-cobalt transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                         <span className="absolute inset-y-0 left-0 w-0 group-hover:w-full transition-all duration-500
@@ -881,7 +914,9 @@ export default function App() {
               </p>
             </div>
             <div className="col-span-6 lg:col-span-3">
-              <div className="kicker mb-4">Sitemap</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink/60 dark:text-paper/60 mb-4">
+                Sitemap
+              </div>
               <ul className="space-y-2.5">
                 {['Work','Process','Studio','FAQ','Contact'].map((x) => (
                   <li key={x}>
@@ -894,7 +929,9 @@ export default function App() {
               </ul>
             </div>
             <div className="col-span-6 lg:col-span-4">
-              <div className="kicker mb-4">Subscribe</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink/60 dark:text-paper/60 mb-4">
+                Subscribe
+              </div>
               <form className="flex items-end gap-3 border-b border-hair-light dark:border-hair-dark focus-within:border-cobalt transition-colors duration-200 pb-2"
                     onSubmit={(e) => e.preventDefault()}>
                 <input type="email" required placeholder="you@company.com"
@@ -903,7 +940,9 @@ export default function App() {
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
-              <p className="kicker mt-3">Occasional notes. No spam.</p>
+              <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink/40 dark:text-paper/40">
+                Occasional notes. No spam.
+              </p>
             </div>
           </div>
           <div className="py-6 border-t border-hair-light dark:border-hair-dark flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
