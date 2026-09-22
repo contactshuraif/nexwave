@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ArrowRight, ArrowUpRight, Menu, X, Sun, Moon,
   Mail, Instagram, Briefcase, Plus, Minus, ArrowUp,
-  Loader2, Check,
+  Loader2, Check, AlertCircle,
 } from 'lucide-react'
 
 /* ============================================================
@@ -75,11 +75,10 @@ function useScrollFlag(threshold = 20) {
   return past
 }
 
-/* Cursor spotlight — updates --mx / --my CSS vars on :root */
 function useCursorSpotlight() {
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    if (window.matchMedia('(hover: none)').matches) return // skip on touch
+    if (window.matchMedia('(hover: none)').matches) return
     let frame = 0
     const onMove = (e) => {
       cancelAnimationFrame(frame)
@@ -97,7 +96,6 @@ function useCursorSpotlight() {
   }, [])
 }
 
-/* Magnetic — moves element slightly toward cursor */
 function useMagnetic(strength = 0.25) {
   const ref = useRef(null)
   useEffect(() => {
@@ -131,42 +129,6 @@ function useMagnetic(strength = 0.25) {
   return ref
 }
 
-/* 3D Tilt following cursor over a card */
-function useTilt(maxDeg = 8) {
-  const ref = useRef(null)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    if (window.matchMedia('(hover: none)').matches) return
-
-    let frame = 0
-    const onMove = (e) => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect()
-        const x = (e.clientX - r.left) / r.width  - 0.5
-        const y = (e.clientY - r.top)  / r.height - 0.5
-        el.style.transform =
-          `perspective(1000px) rotateX(${-y * maxDeg}deg) rotateY(${x * maxDeg}deg) translateZ(0)`
-      })
-    }
-    const onLeave = () => {
-      cancelAnimationFrame(frame)
-      el.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)'
-    }
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerleave', onLeave)
-    return () => {
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerleave', onLeave)
-      cancelAnimationFrame(frame)
-    }
-  }, [maxDeg])
-  return ref
-}
-
-/* Count-up numbers */
 function useCountUp(target, duration = 1600) {
   const ref = useRef(null)
   const [value, setValue] = useState(0)
@@ -182,7 +144,6 @@ function useCountUp(target, duration = 1600) {
       const start = performance.now()
       const tick = (now) => {
         const t = Math.min(1, (now - start) / duration)
-        // easeOutExpo
         const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t)
         setValue(target * eased)
         if (t < 1) requestAnimationFrame(tick)
@@ -213,11 +174,9 @@ function Reveal({ children, delay = 0, y = 24, as: Tag = 'div', className = '', 
   )
 }
 
-/* Animated mesh gradient backdrop */
 function MeshBackground() {
   return (
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {/* Orb 1 — cobalt */}
       <div
         className="absolute -top-[20%] -left-[15%] w-[55vw] h-[55vw] rounded-full
                    animate-mesh-drift opacity-[0.22] dark:opacity-[0.35]"
@@ -227,7 +186,6 @@ function MeshBackground() {
           willChange: 'transform',
         }}
       />
-      {/* Orb 2 — teal */}
       <div
         className="absolute top-[30%] -right-[20%] w-[60vw] h-[60vw] rounded-full
                    animate-mesh-drift-2 opacity-[0.18] dark:opacity-[0.28]"
@@ -237,7 +195,6 @@ function MeshBackground() {
           willChange: 'transform',
         }}
       />
-      {/* Orb 3 — violet */}
       <div
         className="absolute -bottom-[25%] left-[25%] w-[50vw] h-[50vw] rounded-full
                    animate-mesh-drift-3 opacity-[0.14] dark:opacity-[0.22]"
@@ -247,7 +204,6 @@ function MeshBackground() {
           willChange: 'transform',
         }}
       />
-      {/* Fine grid overlay */}
       <div
         className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06]"
         style={{
@@ -263,7 +219,6 @@ function MeshBackground() {
   )
 }
 
-/* Ripple-enabled primary button */
 function MagneticButton({ children, href = '#', className = '', ...rest }) {
   const magnetRef = useMagnetic(0.22)
 
@@ -318,7 +273,8 @@ function Field({ label, placeholder, type = 'text', textarea = false, id, ...res
   const base = `w-full bg-transparent border-0 border-b border-hair-light dark:border-hair-dark
                 focus:border-cobalt transition-colors duration-300 outline-none
                 py-3 text-base font-sans text-ink dark:text-paper
-                placeholder:text-ink/30 dark:placeholder:text-paper/25`
+                placeholder:text-ink/30 dark:placeholder:text-paper/25
+                disabled:opacity-60 disabled:cursor-not-allowed`
   const fieldId = id || label.toLowerCase().replace(/\s+/g, '-')
   return (
     <label htmlFor={fieldId} className="block">
@@ -348,7 +304,6 @@ function SectionHeader({ number, kicker, children }) {
   )
 }
 
-/* Animated stat */
 function Stat({ raw, suffix = '', label, delay = 0 }) {
   const { ref, value } = useCountUp(raw)
   const display =
@@ -481,33 +436,105 @@ function FaqRow({ index, q, a }) {
   )
 }
 
+/* ============================================================
+   CONTACT FORM — wired to /api/contact (Resend)
+   States: idle · loading · success · error
+   ============================================================ */
 function ContactForm() {
   const [state, setState] = useState('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
   const onSubmit = async (e) => {
     e.preventDefault()
+    if (state === 'loading' || state === 'success') return
+
     setState('loading')
-    await new Promise(r => setTimeout(r, 900))
-    setState('success')
-    setTimeout(() => setState('idle'), 2600)
-    e.target.reset?.()
+    setErrorMsg('')
+
+    const formData = new FormData(e.target)
+    const payload = {
+      name:    (formData.get('name')    || '').toString().trim(),
+      email:   (formData.get('email')   || '').toString().trim(),
+      company: (formData.get('company') || '').toString().trim(),
+      message: (formData.get('message') || '').toString().trim(),
+    }
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Something went wrong. Please try again.')
+      }
+
+      setState('success')
+      e.target.reset?.()
+      setTimeout(() => setState('idle'), 5000)
+    } catch (err) {
+      console.error('[contact form]', err)
+      setErrorMsg(err.message || 'Failed to send. Please try again.')
+      setState('error')
+      setTimeout(() => setState('idle'), 6000)
+    }
   }
+
+  const disabled = state === 'loading' || state === 'success'
+
   return (
     <form onSubmit={onSubmit} className="space-y-6" noValidate>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Field label="Name"  name="name"  placeholder="Ada Lovelace" required />
-        <Field label="Email" name="email" type="email" placeholder="ada@example.com" required />
+        <Field label="Name"  name="name"  placeholder="Ada Lovelace"    required disabled={disabled} />
+        <Field label="Email" name="email" type="email" placeholder="ada@example.com" required disabled={disabled} />
       </div>
-      <Field label="Company" name="company" placeholder="Acme, Inc." />
-      <Field label="What are you building?" name="message" textarea placeholder="A few lines is plenty." required />
-      <div className="flex items-center gap-6 pt-2">
-        <button type="submit" disabled={state === 'loading'}
-                className="btn btn-primary disabled:opacity-70 disabled:cursor-wait">
-          {state === 'idle' && <>Send inquiry <ArrowRight className="w-4 h-4 arrow-slide" /></>}
+      <Field label="Company" name="company" placeholder="Acme, Inc." disabled={disabled} />
+      <Field
+        label="What are you building?"
+        name="message"
+        textarea
+        placeholder="A few lines is plenty."
+        required
+        disabled={disabled}
+      />
+
+      <div className="flex items-center gap-6 pt-2 flex-wrap">
+        <button
+          type="submit"
+          disabled={disabled}
+          className="btn btn-primary disabled:opacity-70 disabled:cursor-wait"
+        >
+          {state === 'idle'    && <>Send inquiry <ArrowRight className="w-4 h-4 arrow-slide" /></>}
           {state === 'loading' && <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>}
           {state === 'success' && <><Check className="w-4 h-4" /> Sent — thank you</>}
+          {state === 'error'   && <>Try again <ArrowRight className="w-4 h-4 arrow-slide" /></>}
         </button>
         <span className="kicker">Replies within one business day</span>
       </div>
+
+      {/* Error message */}
+      {state === 'error' && errorMsg && (
+        <div role="alert"
+             className="flex items-start gap-3 p-4 rounded-hair
+                        border border-red-500/30 bg-red-500/5
+                        text-sm text-red-500 dark:text-red-400">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Success message */}
+      {state === 'success' && (
+        <div role="status"
+             className="flex items-start gap-3 p-4 rounded-hair
+                        border border-teal/30 bg-teal/5
+                        text-sm text-teal">
+          <Check className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>Got it — thanks for reaching out. We'll reply within one business day.</span>
+        </div>
+      )}
     </form>
   )
 }
@@ -521,9 +548,6 @@ export default function App() {
   const progress = useScrollProgress()
   const scrolled = useScrollFlag(20)
   const [menuOpen, setMenuOpen] = useState(false)
-  const tilt1 = useTilt(6)
-  const tilt2 = useTilt(6)
-  const tilt3 = useTilt(6)
 
   useCursorSpotlight()
 
@@ -532,7 +556,7 @@ export default function App() {
       <MeshBackground />
       <div className="spotlight" aria-hidden="true" />
 
-      {/* Scroll progress bar with gradient */}
+      {/* Scroll progress bar */}
       <div aria-hidden="true" className="fixed top-0 left-0 right-0 z-[60] h-[2px] bg-transparent">
         <div
           className="h-full transition-[width] duration-100 ease-out"
@@ -642,7 +666,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Stats — animated count-up */}
           <div className="mt-20 md:mt-28 grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-hair-light dark:border-hair-dark">
             <Stat raw={18}  suffix="+" label="Products shipped"      delay={0} />
             <Stat raw={4.9} suffix="★" label="Client satisfaction"   delay={80} />
@@ -659,7 +682,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* ============ MARQUEE with gradient mask ============ */}
+      {/* ============ MARQUEE ============ */}
       <div className="border-y border-hair-light dark:border-hair-dark py-6 overflow-hidden mask-fade-x">
         <div className="flex animate-marquee whitespace-nowrap hover:[animation-play-state:paused]">
           {[...MARQUEE, ...MARQUEE].map((item, i) => (
@@ -699,7 +722,6 @@ export default function App() {
               <Reveal key={p.n} as="li" delay={i * 80}>
                 <div className="relative h-full bg-paper dark:bg-ink p-8 md:p-10 group
                                 transition-colors duration-500 ease-reveal overflow-hidden">
-                  {/* gradient wash on hover */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100
                                   transition-opacity duration-500 pointer-events-none"
                        style={{
@@ -756,7 +778,6 @@ export default function App() {
       {/* ============ QUOTE ============ */}
       <section className="py-24 md:py-32 relative overflow-hidden
                           bg-ink text-paper dark:bg-paper dark:text-ink transition-colors">
-        {/* gradient backdrop overlay */}
         <div className="absolute inset-0 pointer-events-none"
              style={{
                background: 'radial-gradient(60% 80% at 20% 30%, rgba(27,77,255,0.30), transparent 60%),' +
@@ -833,7 +854,6 @@ export default function App() {
                         <span className="kicker w-20">{c.label}</span>
                         <span className={`flex-1 font-mono text-sm ${c.hover} transition-colors duration-200`}>{c.value}</span>
                         <ArrowUpRight className="w-4 h-4 text-ink/30 dark:text-paper/30 group-hover:text-cobalt transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                        {/* gradient sweep on hover */}
                         <span className="absolute inset-y-0 left-0 w-0 group-hover:w-full transition-all duration-500
                                          bg-gradient-to-r from-cobalt/5 via-teal/5 to-transparent pointer-events-none" />
                       </a>
